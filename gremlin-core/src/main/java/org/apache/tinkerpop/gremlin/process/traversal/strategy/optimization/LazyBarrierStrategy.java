@@ -33,10 +33,10 @@ import org.apache.tinkerpop.gremlin.process.traversal.step.util.EmptyStep;
 import org.apache.tinkerpop.gremlin.process.traversal.step.util.ProfileStep;
 import org.apache.tinkerpop.gremlin.process.traversal.strategy.AbstractTraversalStrategy;
 import org.apache.tinkerpop.gremlin.process.traversal.traverser.TraverserRequirement;
-import org.apache.tinkerpop.gremlin.process.traversal.util.SideEffectHelper;
 import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalHelper;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -74,7 +74,8 @@ public final class LazyBarrierStrategy extends AbstractTraversalStrategy<Travers
                         TraversalHelper.hasStepOfAssignableClass(ProfileSideEffectStep.class, TraversalHelper.getRootTraversal(traversal)))) // necessary cause ProfileTest analyzes counts
             return;
 
-        final Set<String> frozenStepIds = SideEffectHelper.determineFrozenStepIds(traversal);
+        final Set<String> frozenStepIds = TraversalHelper.getRootTraversal(traversal)
+                .<Set<String>>metadata(NoBarrierStrategy.FROZEN_STEPS_METADATA_KEY).orElse(Collections.emptySet());
         boolean foundFlatMap = false;
         boolean labeledPath = false;
         for (int i = 0; i < traversal.getSteps().size(); i++) {

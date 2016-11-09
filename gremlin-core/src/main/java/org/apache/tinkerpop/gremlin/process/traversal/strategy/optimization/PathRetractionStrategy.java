@@ -32,7 +32,6 @@ import org.apache.tinkerpop.gremlin.process.traversal.step.util.EmptyStep;
 import org.apache.tinkerpop.gremlin.process.traversal.strategy.AbstractTraversalStrategy;
 import org.apache.tinkerpop.gremlin.process.traversal.traverser.TraverserRequirement;
 import org.apache.tinkerpop.gremlin.process.traversal.util.PathUtil;
-import org.apache.tinkerpop.gremlin.process.traversal.util.SideEffectHelper;
 import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalHelper;
 import org.javatuples.Pair;
 
@@ -71,7 +70,8 @@ public final class PathRetractionStrategy extends AbstractTraversalStrategy<Trav
         if (TraversalHelper.anyStepRecursively(step -> (step instanceof LambdaHolder || step.getRequirements().contains(TraverserRequirement.PATH)), TraversalHelper.getRootTraversal(traversal)))
             return;
 
-        final Set<String> frozenStepIds = SideEffectHelper.determineFrozenStepIds(traversal);
+        final Set<String> frozenStepIds = TraversalHelper.getRootTraversal(traversal)
+                .<Set<String>>metadata(NoBarrierStrategy.FROZEN_STEPS_METADATA_KEY).orElse(Collections.emptySet());
         final boolean onGraphComputer = TraversalHelper.onGraphComputer(traversal);
         final Set<String> foundLabels = new HashSet<>();
         final Set<String> keepLabels = new HashSet<>();
