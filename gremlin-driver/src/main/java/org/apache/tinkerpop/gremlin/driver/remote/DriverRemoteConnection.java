@@ -163,7 +163,7 @@ public class DriverRemoteConnection implements RemoteConnection {
     }
 
     /**
-     * @deprecated As of release 3.2.2, replaced by {@link #submit(Bytecode)}.
+     * @deprecated As of release 3.2.2, replaced by {@link #submitAsync(Bytecode)}.
      */
     @Deprecated
     @Override
@@ -181,6 +181,10 @@ public class DriverRemoteConnection implements RemoteConnection {
         }
     }
 
+    /**
+     * @deprecated As of release 3.2.4, replaced by {@link #submitAsync(Bytecode)}.
+     */
+    @Deprecated
     @Override
     public <E> RemoteTraversal<?,E> submit(final Bytecode bytecode) throws RemoteConnectionException {
         try {
