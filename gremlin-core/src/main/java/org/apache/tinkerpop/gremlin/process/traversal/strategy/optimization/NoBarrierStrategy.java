@@ -45,7 +45,7 @@ import java.util.Set;
 public class NoBarrierStrategy extends AbstractTraversalStrategy<TraversalStrategy.OptimizationStrategy>
         implements TraversalStrategy.OptimizationStrategy {
 
-    static final String FROZEN_STEPS_METADATA_KEY = "gremlin.noBarrier.frozenSteps";
+    static final String LAZY_STEPS_METADATA_KEY = "gremlin.noBarrier.lazySteps";
     private static final NoBarrierStrategy INSTANCE = new NoBarrierStrategy();
     private final Set<Class<? extends OptimizationStrategy>> postStrategies;
 
@@ -56,21 +56,21 @@ public class NoBarrierStrategy extends AbstractTraversalStrategy<TraversalStrate
     }
 
     private static void processSideEffectSteps(final Set<String> activeSideEffectKeys,
-                                               final Map<String, LinkedList<List<String>>> frozenStepIdMap,
+                                               final Map<String, LinkedList<List<String>>> lazyStepIdMap,
                                                final Traversal.Admin<?, ?> traversal) {
         for (final Step step : traversal.getSteps()) {
             if (step instanceof SideEffectCapable && !(step instanceof Barrier)) {
                 final String sideEffectKey = ((SideEffectCapable) step).getSideEffectKey();
-                if (!frozenStepIdMap.containsKey(sideEffectKey)) {
-                    frozenStepIdMap.put(sideEffectKey, new LinkedList<>());
-                    frozenStepIdMap.get(sideEffectKey).add(new ArrayList<>());
+                if (!lazyStepIdMap.containsKey(sideEffectKey)) {
+                    lazyStepIdMap.put(sideEffectKey, new LinkedList<>());
+                    lazyStepIdMap.get(sideEffectKey).add(new ArrayList<>());
                 }
                 activeSideEffectKeys.add(sideEffectKey);
                 continue;
             }
             if (step instanceof Barrier) {
                 activeSideEffectKeys.clear();
-                for (final LinkedList<List<String>> list : frozenStepIdMap.values()) {
+                for (final LinkedList<List<String>> list : lazyStepIdMap.values()) {
                     if (!list.getLast().isEmpty()) {
                         list.add(new ArrayList<>());
                     }
@@ -80,22 +80,22 @@ public class NoBarrierStrategy extends AbstractTraversalStrategy<TraversalStrate
                 continue;
             }
             for (final String key : activeSideEffectKeys) {
-                frozenStepIdMap.get(key).getLast().add(step.getId());
+                lazyStepIdMap.get(key).getLast().add(step.getId());
             }
             if (step instanceof Scoping && step.getRequirements().contains(TraverserRequirement.SIDE_EFFECTS)) {
                 for (final String key : ((Scoping) step).getScopeKeys()) {
-                    if (frozenStepIdMap.containsKey(key) && activeSideEffectKeys.contains(key)) {
-                        frozenStepIdMap.get(key).add(new ArrayList<>());
+                    if (lazyStepIdMap.containsKey(key) && activeSideEffectKeys.contains(key)) {
+                        lazyStepIdMap.get(key).add(new ArrayList<>());
                     }
                 }
             } else if (step instanceof LambdaHolder) {
-                for (final LinkedList<List<String>> list : frozenStepIdMap.values()) {
+                for (final LinkedList<List<String>> list : lazyStepIdMap.values()) {
                     list.add(new ArrayList<>());
                 }
             } else if (step instanceof TraversalParent) {
                 final TraversalParent traversalParent = (TraversalParent) step;
-                traversalParent.getGlobalChildren().forEach(t -> processSideEffectSteps(activeSideEffectKeys, frozenStepIdMap, t));
-                traversalParent.getLocalChildren().forEach(t -> processSideEffectSteps(activeSideEffectKeys, frozenStepIdMap, t));
+                traversalParent.getGlobalChildren().forEach(t -> processSideEffectSteps(activeSideEffectKeys, lazyStepIdMap, t));
+                traversalParent.getLocalChildren().forEach(t -> processSideEffectSteps(activeSideEffectKeys, lazyStepIdMap, t));
             }
         }
     }
@@ -107,16 +107,16 @@ public class NoBarrierStrategy extends AbstractTraversalStrategy<TraversalStrate
     @Override
     public void apply(final Traversal.Admin<?, ?> traversal) {
         if (traversal.getParent() instanceof EmptyStep && !TraversalHelper.onGraphComputer(traversal)) {
-            final Set<String> frozenStepIds = new HashSet<>();
+            final Set<String> lazyStepIds = new HashSet<>();
             if (!TraversalHelper.onGraphComputer(traversal)) {
-                final Map<String, LinkedList<List<String>>> frozenStepIdMap = new HashMap<>();
-                processSideEffectSteps(new HashSet<>(), frozenStepIdMap, traversal);
-                for (final LinkedList<List<String>> list : frozenStepIdMap.values()) {
+                final Map<String, LinkedList<List<String>>> lazyStepIdMap = new HashMap<>();
+                processSideEffectSteps(new HashSet<>(), lazyStepIdMap, traversal);
+                for (final LinkedList<List<String>> list : lazyStepIdMap.values()) {
                     list.removeLast();
-                    list.forEach(frozenStepIds::addAll);
+                    list.forEach(lazyStepIds::addAll);
                 }
             }
-            traversal.metadata(FROZEN_STEPS_METADATA_KEY, frozenStepIds);
+            traversal.metadata(LAZY_STEPS_METADATA_KEY, lazyStepIds);
         }
     }
 

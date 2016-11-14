@@ -70,8 +70,8 @@ public final class PathRetractionStrategy extends AbstractTraversalStrategy<Trav
         if (TraversalHelper.anyStepRecursively(step -> (step instanceof LambdaHolder || step.getRequirements().contains(TraverserRequirement.PATH)), TraversalHelper.getRootTraversal(traversal)))
             return;
 
-        final Set<String> frozenStepIds = TraversalHelper.getRootTraversal(traversal)
-                .<Set<String>>metadata(NoBarrierStrategy.FROZEN_STEPS_METADATA_KEY).orElse(Collections.emptySet());
+        final Set<String> lazyStepIds = TraversalHelper.getRootTraversal(traversal)
+                .<Set<String>>metadata(NoBarrierStrategy.LAZY_STEPS_METADATA_KEY).orElse(Collections.emptySet());
         final boolean onGraphComputer = TraversalHelper.onGraphComputer(traversal);
         final Set<String> foundLabels = new HashSet<>();
         final Set<String> keepLabels = new HashSet<>();
@@ -110,7 +110,7 @@ public final class PathRetractionStrategy extends AbstractTraversalStrategy<Trav
                         !(currentStep instanceof Barrier) &&
                         !(currentStep.getNextStep() instanceof Barrier) &&
                         !(currentStep.getTraversal().getParent() instanceof MatchStep) &&
-                        !(frozenStepIds.contains(currentStep.getId())))
+                        !(lazyStepIds.contains(currentStep.getId())))
                     TraversalHelper.insertAfterStep(new NoOpBarrierStep<>(traversal, this.standardBarrierSize), currentStep, traversal);
             }
         }

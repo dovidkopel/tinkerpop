@@ -74,8 +74,8 @@ public final class LazyBarrierStrategy extends AbstractTraversalStrategy<Travers
                         TraversalHelper.hasStepOfAssignableClass(ProfileSideEffectStep.class, TraversalHelper.getRootTraversal(traversal)))) // necessary cause ProfileTest analyzes counts
             return;
 
-        final Set<String> frozenStepIds = TraversalHelper.getRootTraversal(traversal)
-                .<Set<String>>metadata(NoBarrierStrategy.FROZEN_STEPS_METADATA_KEY).orElse(Collections.emptySet());
+        final Set<String> lazyStepIds = TraversalHelper.getRootTraversal(traversal)
+                .<Set<String>>metadata(NoBarrierStrategy.LAZY_STEPS_METADATA_KEY).orElse(Collections.emptySet());
         boolean foundFlatMap = false;
         boolean labeledPath = false;
         for (int i = 0; i < traversal.getSteps().size(); i++) {
@@ -91,7 +91,7 @@ public final class LazyBarrierStrategy extends AbstractTraversalStrategy<Travers
                     (step instanceof GraphStep &&
                             (i > 0 || ((GraphStep) step).getIds().length >= BIG_START_SIZE ||
                                     (((GraphStep) step).getIds().length == 0 && !(step.getNextStep() instanceof HasStep))))) {
-                if (foundFlatMap && !labeledPath && !frozenStepIds.contains(step.getId()) &&
+                if (foundFlatMap && !labeledPath && !lazyStepIds.contains(step.getId()) &&
                         !(step.getNextStep() instanceof Barrier) &&
                         (!(step.getNextStep() instanceof EmptyStep) || step.getTraversal().getParent() instanceof EmptyStep)) {
                     final Step noOpBarrierStep = new NoOpBarrierStep<>(traversal, MAX_BARRIER_SIZE);
