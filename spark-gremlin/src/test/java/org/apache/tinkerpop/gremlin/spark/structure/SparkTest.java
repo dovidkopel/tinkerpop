@@ -34,11 +34,14 @@ import org.apache.tinkerpop.gremlin.spark.process.computer.SparkHadoopGraphProvi
 import org.apache.tinkerpop.gremlin.spark.structure.io.PersistedOutputRDD;
 import org.apache.tinkerpop.gremlin.spark.structure.io.gryo.GryoSerializer;
 import org.apache.tinkerpop.gremlin.structure.Graph;
+import org.apache.tinkerpop.gremlin.structure.T;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.util.GraphFactory;
 import org.junit.Test;
 import scala.collection.JavaConversions;
 
 import java.io.File;
+import java.util.Iterator;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -105,6 +108,32 @@ public class SparkTest extends AbstractSparkTest {
                 counter++;
         }
         return counter;
+    }
+
+    @Test
+    public void testSparkGraph() throws Exception {
+        SparkGraph graph = new SparkGraph();
+        SparkVertex v1 = graph.addVertex(T.label, "test1");
+        System.out.println(v1);
+        SparkVertex v2 = graph.addVertex(T.label, "test2");
+        System.out.println(v2);
+        SparkVertex v3 = graph.addVertex(T.label, "test3");
+        System.out.println(v3);
+
+        Iterator<Vertex> it = graph.vertices();
+        while(it.hasNext()) {
+            Vertex v = it.next();
+            System.out.println(v.id()+ ": "+v.label());
+        }
+
+        it = graph.vertices(0, 1);
+        while(it.hasNext()) {
+            Vertex v = it.next();
+            System.out.println(v.id()+ ": "+v.label());
+        }
+
+        SparkEdge e1 = v1.addEdge("loves", v2);
+        System.out.println(e1);
     }
 
 }
