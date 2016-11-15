@@ -43,10 +43,7 @@ import scala.collection.JavaConversions;
 import java.io.File;
 import java.util.Iterator;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * @author Marko A. Rodriguez (http://markorodriguez.com)
@@ -134,6 +131,15 @@ public class SparkTest extends AbstractSparkTest {
 
         SparkEdge e1 = v1.addEdge("loves", v2);
         System.out.println(e1);
+
+        SparkEdge e2 = v2.addEdge("hates", v3);
+        System.out.println(e2);
+
+
+        System.out.println(graph.traversal().V(0).out("loves").next());
+        System.out.println("Edges: "+graph.traversal().E().count().next());
+        System.out.println("Vertexes: "+graph.traversal().V().toList());
+//        System.out.println("Traversal: "+vv);
     }
 
 }

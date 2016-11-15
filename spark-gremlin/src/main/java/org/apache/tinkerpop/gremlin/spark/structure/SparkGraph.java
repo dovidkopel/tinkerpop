@@ -2,35 +2,51 @@ package org.apache.tinkerpop.gremlin.spark.structure;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.apache.tinkerpop.gremlin.structure.util.ElementHelper;
-import scala.Tuple2;
 import org.apache.commons.configuration.Configuration;
+import org.apache.commons.lang.reflect.ConstructorUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.tinkerpop.gremlin.hadoop.structure.HadoopConfiguration;
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
-import org.apache.tinkerpop.gremlin.structure.*;
+import org.apache.tinkerpop.gremlin.process.traversal.TraversalStrategies;
+import org.apache.tinkerpop.gremlin.spark.GraphDriver;
+import org.apache.tinkerpop.gremlin.spark.process.computer.SparkGraphComputeComputer;
+import org.apache.tinkerpop.gremlin.spark.process.computer.traversal.strategy.optimization.SparkInterceptorStrategy;
+import org.apache.tinkerpop.gremlin.structure.Edge;
+import org.apache.tinkerpop.gremlin.structure.Graph;
+import org.apache.tinkerpop.gremlin.structure.Transaction;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
+import scala.Tuple2;
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by dkopel on 11/15/16.
  */
 public class SparkGraph implements Graph {
+
+    static {
+        TraversalStrategies.GlobalCache.registerStrategies(SparkGraph.class, TraversalStrategies.GlobalCache.getStrategies(Graph.class).clone().addStrategies(
+            SparkInterceptorStrategy.instance())
+        );
+    }
+
     private final org.apache.commons.configuration.Configuration hadoopConf = new HadoopConfiguration();
     private final SparkConf sparkConf = new SparkConf();
     private final JavaSparkContext context;
     private final AtomicLong currentId = new AtomicLong(-1L);
+    protected final UUID uuid;
     private JavaPairRDD<Long, SparkElement> rdd;
+    private Class<? extends GraphComputer> graphComputerClass = SparkGraphComputeComputer.class;
 
     public SparkGraph() {
         sparkConf.setAppName("test").setMaster("local[4]");
+        this.uuid = GraphDriver.INSTANCE.newgraph(this);
         this.context = JavaSparkContext.fromSparkContext(SparkContext.getOrCreate(sparkConf));
         this.rdd = context.parallelizePairs(Lists.<Tuple2<Long, SparkElement>>newArrayList());
     }
@@ -38,6 +54,7 @@ public class SparkGraph implements Graph {
     private <V extends SparkElement> JavaPairRDD<Long, V> parallelize(Long id, V element) {
         return context.parallelizePairs(Lists.newArrayList(new Tuple2<>(id, element)));
     }
+
 
     protected Long nextId() {
         return currentId.incrementAndGet();
@@ -52,6 +69,22 @@ public class SparkGraph implements Graph {
         return addToRDD(parallelize((Long) element.id, element));
     }
 
+    protected JavaPairRDD<Long, SparkElement> addToRDD(SparkElement... elements) {
+        Set<Long> ids = new HashSet();
+        List<Tuple2<Long, SparkElement>> tuples = Stream.of(elements).map(e -> {
+            ids.add((Long) e.id);
+            rdd = rdd.subtractByKey(parallelize((Long) e.id, null));
+            return new Tuple2<Long, SparkElement>((Long)e.id, e);
+        }).collect(Collectors.toList());
+
+        this.rdd = rdd.union(context.parallelizePairs(tuples));
+        return rdd;
+    }
+
+    protected JavaPairRDD<Long, SparkElement> getRDD() {
+        return this.rdd;
+    }
+
     @Override
     public SparkVertex addVertex(Object... keyValues) {
         return SparkUtils.addVertex(this, keyValues);
@@ -59,12 +92,17 @@ public class SparkGraph implements Graph {
 
     @Override
     public <C extends GraphComputer> C compute(Class<C> graphComputerClass) throws IllegalArgumentException {
-        return null;
+        this.graphComputerClass = graphComputerClass;
+        return (C) compute();
     }
 
     @Override
     public GraphComputer compute() throws IllegalArgumentException {
-        return null;
+        try {
+            return (GraphComputer) ConstructorUtils.invokeConstructor(graphComputerClass, this);
+        } catch (Exception e) {
+            throw new IllegalArgumentException();
+        }
     }
 
     @Override
@@ -85,7 +123,18 @@ public class SparkGraph implements Graph {
 
     @Override
     public Iterator<Edge> edges(Object... edgeIds) {
-        return null;
+        Set<Long> ids = new HashSet();
+        for(Object v : edgeIds) {
+            if(v instanceof Long) {
+                ids.add((Long) v);
+            } else {
+                ids.add(Long.valueOf(v.toString()));
+            }
+        }
+        return this.rdd
+            .filter((t) -> SparkUtils.isEdge(t, Sets.newHashSet(ids)))
+            .map(t -> (Edge) t._2())
+            .toLocalIterator();
     }
 
     @Override
@@ -106,5 +155,9 @@ public class SparkGraph implements Graph {
     @Override
     public Configuration configuration() {
         return null;
+    }
+
+    public JavaSparkContext getContext() {
+        return context;
     }
 }

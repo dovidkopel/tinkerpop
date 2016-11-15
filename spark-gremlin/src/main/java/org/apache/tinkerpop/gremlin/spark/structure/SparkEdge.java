@@ -1,6 +1,9 @@
 package org.apache.tinkerpop.gremlin.spark.structure;
 
-import org.apache.tinkerpop.gremlin.structure.*;
+import org.apache.tinkerpop.gremlin.structure.Direction;
+import org.apache.tinkerpop.gremlin.structure.Edge;
+import org.apache.tinkerpop.gremlin.structure.Property;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 
@@ -12,18 +15,13 @@ import java.util.Map;
  */
 public class SparkEdge extends SparkElement implements Edge {
     protected Map<String, Property> properties;
-    protected final Vertex inVertex;
-    protected final Vertex outVertex;
+    protected final Long _inVertex;
+    protected final Long _outVertex;
 
-    protected SparkEdge(final Object id, final Vertex outVertex, final String label, final Vertex inVertex) {
-        super(id, label);
-        this.outVertex = outVertex;
-        this.inVertex = inVertex;
-    }
-
-    @Override
-    public Graph graph() {
-        return this.inVertex.graph();
+    protected SparkEdge(final Object id, final SparkVertex outVertex, final String label, final SparkVertex inVertex) {
+        super(id, label, inVertex.graphUUID);
+        this._outVertex = (Long) outVertex.id();
+        this._inVertex = (Long) inVertex.id();
     }
 
     @Override
@@ -45,13 +43,35 @@ public class SparkEdge extends SparkElement implements Edge {
     public Iterator<Vertex> vertices(Direction direction) {
         switch (direction) {
             case OUT:
-                return IteratorUtils.of(this.outVertex);
+                return IteratorUtils.map(graph().getRDD().lookup(this._outVertex).iterator(), e -> (Vertex) e);
             case IN:
-                return IteratorUtils.of(this.inVertex);
+                return IteratorUtils.map(graph().getRDD().lookup(this._inVertex).iterator(), e -> (Vertex) e);
+            case BOTH:
             default:
-                return IteratorUtils.of(this.outVertex, this.inVertex);
+                return IteratorUtils.concat(
+                    graph().getRDD().lookup(this._outVertex).stream().map(e -> (Vertex) e).iterator(),
+                    graph().getRDD().lookup(this._inVertex).stream().map(e -> (Vertex) e).iterator()
+                );
         }
     }
+//
+//    @Override
+//    public Vertex outVertex() {
+//        List<SparkElement> vs = graph().getRDD().lookup(_outVertex);
+//        if(vs.size() == 1) {
+//            return (Vertex) vs.get(0);
+//        }
+//        return null;
+//    }
+//
+//    @Override
+//    public Vertex inVertex() {
+//        List<SparkElement> vs = graph().getRDD().lookup(_inVertex);
+//        if(vs.size() == 1) {
+//            return (Vertex) vs.get(0);
+//        }
+//        return null;
+//    }
 
     @Override
     public String toString() {
