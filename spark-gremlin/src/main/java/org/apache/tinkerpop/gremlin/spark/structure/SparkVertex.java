@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import org.apache.tinkerpop.gremlin.structure.*;
 import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
+import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,16 +14,16 @@ import java.util.stream.Collectors;
 /**
  * Created by dkopel on 11/15/16.
  */
-public class SparkVertex extends SparkElement implements Vertex {
+public class SparkVertex<ID extends Long> extends SparkElement<ID> implements Vertex {
     protected Map<String, List<VertexProperty>> properties;
     protected Map<String, Set<Long>> outEdges = new ConcurrentHashMap<>();
     protected Map<String, Set<Long>> inEdges = new ConcurrentHashMap<>();
 
-    public SparkVertex(final Object id, final String label, final SparkGraph graph) {
-        super(id, label, graph.uuid);
+    public SparkVertex(final ID id, final String label, final SparkGraph graph) {
+        super(id, label, graph.getUUID());
     }
 
-    public SparkVertex(Object id, String label, UUID graphUUID) {
+    public SparkVertex(ID id, String label, UUID graphUUID) {
         super(id, label, graphUUID);
     }
 
@@ -44,10 +45,10 @@ public class SparkVertex extends SparkElement implements Vertex {
             args.add(T.label);
             args.add(label);
         }
-        return SparkUtils.addEdge(graph(), (SparkVertex) inVertex, this, args.toArray());
+        return graph().addEdge((SparkVertex) inVertex, this, args.toArray());
     }
 
-    protected void _addEdge(Direction direction, String label, Long id) {
+    protected void _addEdge(Direction direction, String label, ID id) {
         if (_edges(direction).containsKey(label)) {
             _edges(direction).get(label).add(id);
         } else {
@@ -84,34 +85,53 @@ public class SparkVertex extends SparkElement implements Vertex {
         }
     }
 
-    private Set<Long> _edgesIds(Direction direction, String... edgeLabels) {
+    private Set<ID> _edgesIds(Direction direction, String... edgeLabels) {
         return _edges(direction).entrySet()
             .stream()
             .filter(e -> edgeLabels.length == 0 || Arrays.asList(edgeLabels).contains(e.getKey()))
-            .map(e -> e.getValue().iterator().next())
+            .map(e -> (ID) e.getValue().iterator().next())
             .collect(Collectors.toSet());
     }
 
     @Override
     public Iterator<Edge> edges(Direction direction, String... edgeLabels) {
-        Set<Long> ids = _edgesIds(direction, edgeLabels);
-        return graph().getRDD()
-            .filter(t -> ids.contains(t._1()))
-            .map(t -> (Edge) t._2())
-            .toLocalIterator();
+        Set<ID> ids = _edgesIds(direction, edgeLabels);
+        return graph().edges(ids);
     }
 
     @Override
     public Iterator<Vertex> vertices(Direction direction, String... edgeLabels) {
-        Set<Long> ids = _edgesIds(direction, edgeLabels);
-        return graph().getRDD()
-            .filter(t -> ids.contains(t._1()))
-            .flatMap(t -> _vertexes(direction, (Edge) t._2()))
-            .toLocalIterator();
+        return IteratorUtils.list(edges(direction, edgeLabels))
+            .stream()
+            .flatMap(e -> _vertexes(direction, e).stream())
+            .iterator();
     }
 
     @Override
     public String toString() {
         return StringFactory.vertexString(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SparkVertex)) return false;
+        if (!super.equals(o)) return false;
+
+        SparkVertex<?> that = (SparkVertex<?>) o;
+
+        if (properties != null ? !properties.equals(that.properties) : that.properties != null) return false;
+        if (outEdges != null ? !outEdges.equals(that.outEdges) : that.outEdges != null) return false;
+        return inEdges != null ? inEdges.equals(that.inEdges) : that.inEdges == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + (properties != null ? properties.hashCode() : 0);
+        result = 31 * result + (outEdges != null ? outEdges.hashCode() : 0);
+        result = 31 * result + (inEdges != null ? inEdges.hashCode() : 0);
+        return result;
     }
 }

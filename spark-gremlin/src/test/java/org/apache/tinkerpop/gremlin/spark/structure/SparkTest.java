@@ -21,6 +21,7 @@ package org.apache.tinkerpop.gremlin.spark.structure;
 
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
+import org.apache.spark.SparkConf;
 import org.apache.spark.rdd.RDD;
 import org.apache.tinkerpop.gremlin.TestHelper;
 import org.apache.tinkerpop.gremlin.hadoop.Constants;
@@ -28,16 +29,21 @@ import org.apache.tinkerpop.gremlin.hadoop.structure.HadoopGraph;
 import org.apache.tinkerpop.gremlin.hadoop.structure.io.gryo.GryoInputFormat;
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
 import org.apache.tinkerpop.gremlin.process.computer.ranking.pagerank.PageRankVertexProgram;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.spark.AbstractSparkTest;
 import org.apache.tinkerpop.gremlin.spark.process.computer.SparkGraphComputer;
 import org.apache.tinkerpop.gremlin.spark.process.computer.SparkHadoopGraphProvider;
 import org.apache.tinkerpop.gremlin.spark.structure.io.PersistedOutputRDD;
 import org.apache.tinkerpop.gremlin.spark.structure.io.gryo.GryoSerializer;
+import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Graph;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.util.GraphFactory;
+import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.collection.JavaConversions;
 
 import java.io.File;
@@ -49,6 +55,7 @@ import static org.junit.Assert.*;
  * @author Marko A. Rodriguez (http://markorodriguez.com)
  */
 public class SparkTest extends AbstractSparkTest {
+    transient private final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Test
     public void testSparkRDDPersistence() throws Exception {
@@ -109,37 +116,54 @@ public class SparkTest extends AbstractSparkTest {
 
     @Test
     public void testSparkGraph() throws Exception {
-        SparkGraph graph = new SparkGraph();
+        SparkConf sparkConf = new SparkConf();
+        sparkConf.setAppName("test").setMaster("local[4]");
+        TransactionalSparkGraph graph = new TransactionalSparkGraph(sparkConf);
         SparkVertex v1 = graph.addVertex(T.label, "test1");
-        System.out.println(v1);
-        SparkVertex v2 = graph.addVertex(T.label, "test2");
-        System.out.println(v2);
-        SparkVertex v3 = graph.addVertex(T.label, "test3");
-        System.out.println(v3);
+        logger.debug("{}", v1);
 
-        Iterator<Vertex> it = graph.vertices();
-        while(it.hasNext()) {
-            Vertex v = it.next();
-            System.out.println(v.id()+ ": "+v.label());
+        Iterator it = graph.vertices(v1.id());
+        Assert.assertTrue(it.hasNext());
+        Assert.assertEquals(it.next(), v1);
+        Assert.assertFalse(it.hasNext());
+
+        SparkVertex v2 = graph.addVertex(T.label, "test2");
+        logger.debug("{}", v2);
+
+        it = graph.vertices(v2.id());
+        Assert.assertTrue(it.hasNext());
+        Assert.assertEquals(it.next(), v2);
+        Assert.assertFalse(it.hasNext());
+
+        SparkVertex v3 = graph.addVertex(T.label, "test3");
+        logger.debug("{}", v3);
+
+        Iterator<Vertex> it2 = graph.vertices();
+        while(it2.hasNext()) {
+            Vertex v = it2.next();
+            logger.debug(v.id()+ ": "+v.label());
         }
 
-        it = graph.vertices(0, 1);
+        it2 = graph.vertices(0, 1);
         while(it.hasNext()) {
-            Vertex v = it.next();
-            System.out.println(v.id()+ ": "+v.label());
+            Vertex v = it2.next();
+            logger.debug(v.id()+ ": "+v.label());
         }
 
         SparkEdge e1 = v1.addEdge("loves", v2);
-        System.out.println(e1);
+        logger.debug("{}", e1);
 
         SparkEdge e2 = v2.addEdge("hates", v3);
-        System.out.println(e2);
+        logger.debug("{}", e2);
 
 
-        System.out.println(graph.traversal().V(0).out("loves").next());
-        System.out.println("Edges: "+graph.traversal().E().count().next());
-        System.out.println("Vertexes: "+graph.traversal().V().toList());
-//        System.out.println("Traversal: "+vv);
+        System.out.println(((SparkVertex) graph.vertices(0).next()).vertices(Direction.OUT).next());
+        GraphTraversal<Vertex, Vertex> tt = graph.traversal().V(0).out("loves");
+        System.out.println(tt);
+        System.out.println(tt.next());
+
+        logger.debug("Edges: "+graph.traversal().E().count().next());
+        logger.debug("Vertexes: "+graph.traversal().V().toList());
     }
 
 }

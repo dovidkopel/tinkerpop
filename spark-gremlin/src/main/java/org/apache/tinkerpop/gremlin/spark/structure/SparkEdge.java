@@ -5,7 +5,6 @@ import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Property;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
-import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -13,12 +12,12 @@ import java.util.Map;
 /**
  * Created by dkopel on 11/15/16.
  */
-public class SparkEdge extends SparkElement implements Edge {
+public class SparkEdge<ID extends Long> extends SparkElement<ID> implements Edge {
     protected Map<String, Property> properties;
     protected final Long _inVertex;
     protected final Long _outVertex;
 
-    protected SparkEdge(final Object id, final SparkVertex outVertex, final String label, final SparkVertex inVertex) {
+    protected SparkEdge(final ID id, final SparkVertex outVertex, final String label, final SparkVertex inVertex) {
         super(id, label, inVertex.graphUUID);
         this._outVertex = (Long) outVertex.id();
         this._inVertex = (Long) inVertex.id();
@@ -43,38 +42,40 @@ public class SparkEdge extends SparkElement implements Edge {
     public Iterator<Vertex> vertices(Direction direction) {
         switch (direction) {
             case OUT:
-                return IteratorUtils.map(graph().getRDD().lookup(this._outVertex).iterator(), e -> (Vertex) e);
+                return graph().getRDD(this._outVertex);
             case IN:
-                return IteratorUtils.map(graph().getRDD().lookup(this._inVertex).iterator(), e -> (Vertex) e);
+                return graph().getRDD(this._inVertex);
             case BOTH:
             default:
-                return IteratorUtils.concat(
-                    graph().getRDD().lookup(this._outVertex).stream().map(e -> (Vertex) e).iterator(),
-                    graph().getRDD().lookup(this._inVertex).stream().map(e -> (Vertex) e).iterator()
-                );
+                return graph().getRDD(this._inVertex, this._outVertex);
         }
     }
-//
-//    @Override
-//    public Vertex outVertex() {
-//        List<SparkElement> vs = graph().getRDD().lookup(_outVertex);
-//        if(vs.size() == 1) {
-//            return (Vertex) vs.get(0);
-//        }
-//        return null;
-//    }
-//
-//    @Override
-//    public Vertex inVertex() {
-//        List<SparkElement> vs = graph().getRDD().lookup(_inVertex);
-//        if(vs.size() == 1) {
-//            return (Vertex) vs.get(0);
-//        }
-//        return null;
-//    }
 
     @Override
     public String toString() {
         return StringFactory.edgeString(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SparkEdge)) return false;
+        if (!super.equals(o)) return false;
+
+        SparkEdge<?> sparkEdge = (SparkEdge<?>) o;
+
+        if (properties != null ? !properties.equals(sparkEdge.properties) : sparkEdge.properties != null) return false;
+        if (_inVertex != null ? !_inVertex.equals(sparkEdge._inVertex) : sparkEdge._inVertex != null) return false;
+        return _outVertex != null ? _outVertex.equals(sparkEdge._outVertex) : sparkEdge._outVertex == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + (properties != null ? properties.hashCode() : 0);
+        result = 31 * result + (_inVertex != null ? _inVertex.hashCode() : 0);
+        result = 31 * result + (_outVertex != null ? _outVertex.hashCode() : 0);
+        return result;
     }
 }
