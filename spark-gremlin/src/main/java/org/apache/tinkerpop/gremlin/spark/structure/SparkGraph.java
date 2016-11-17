@@ -1,7 +1,5 @@
 package org.apache.tinkerpop.gremlin.spark.structure;
 
-import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Graph;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
@@ -17,17 +15,12 @@ import java.util.UUID;
  */
 public interface SparkGraph<ID> extends Graph {
     UUID getUUID();
-    ID nextId();
-    ID toId(Object id);
+    Iterator<? extends SparkElement> getRDD(ID... ids);
+    SparkEdge addEdge(SparkVertex in, SparkVertex out, Object... keyValues);
     Iterator<Vertex> vertices(Collection<Object> vertexIds);
     Iterator<Edge> edges(Collection<Object> vertexIds);
-    JavaSparkContext getContext();
-    <T extends SparkElement> void addToRDD(Collection<T> elements);
-    JavaPairRDD<ID, SparkVertex> addToRDD(SparkVertex... vertex);
-    JavaPairRDD<ID, SparkEdge> addToRDD(SparkEdge... edge);
-    Iterator<? extends SparkElement> getRDD(ID... ids);
-    JavaPairRDD<ID, SparkVertex> getVertexRDD();
-    JavaPairRDD<ID, SparkEdge> getEdgeRDD();
+
+    //JavaPairRDD<ID, SparkProperty>
 
     default Boolean isVertex(Tuple2<ID, ? extends SparkElement> t) {
         return t._2() instanceof SparkVertex;

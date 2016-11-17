@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  * Created by dkopel on 11/15/16.
  */
 public class SparkVertex<ID extends Long> extends SparkElement<ID> implements Vertex {
-    protected Map<String, List<VertexProperty>> properties;
+    protected Map<String, Long> properties = new ConcurrentHashMap<>();
     protected Map<String, Set<Long>> outEdges = new ConcurrentHashMap<>();
     protected Map<String, Set<Long>> inEdges = new ConcurrentHashMap<>();
 

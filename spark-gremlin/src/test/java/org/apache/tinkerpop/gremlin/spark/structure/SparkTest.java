@@ -118,7 +118,7 @@ public class SparkTest extends AbstractSparkTest {
     public void testSparkGraph() throws Exception {
         SparkConf sparkConf = new SparkConf();
         sparkConf.setAppName("test").setMaster("local[4]");
-        TransactionalSparkGraph graph = new TransactionalSparkGraph(sparkConf);
+        DistributedSparkGraph graph = new DistributedSparkGraph(sparkConf);
         SparkVertex v1 = graph.addVertex(T.label, "test1");
         logger.debug("{}", v1);
 

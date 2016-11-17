@@ -17,14 +17,16 @@ import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Created by dkopel on 11/15/16.
  */
-public class TransactionalSparkGraph<ID extends Long> extends AbstractSparkGraph<ID> {
+public class DistributedSparkGraph<ID extends Long> extends AbstractSparkGraph<ID> {
+    private final AtomicLong currentId = new AtomicLong(-1L);
     static {
         TraversalStrategies.GlobalCache.registerStrategies(
-            TransactionalSparkGraph.class, TraversalStrategies.GlobalCache.getStrategies(Graph.class).clone()
+            DistributedSparkGraph.class, TraversalStrategies.GlobalCache.getStrategies(Graph.class).clone()
                 .addStrategies(
                     SparkSingleIterationStrategy.instance(),
                     SparkInterceptorStrategy.instance()
@@ -34,8 +36,13 @@ public class TransactionalSparkGraph<ID extends Long> extends AbstractSparkGraph
 
     private Class<? extends GraphComputer> graphComputerClass = SparkGraphComputer.class;
 
-    public TransactionalSparkGraph(SparkConf conf) {
+    public DistributedSparkGraph(SparkConf conf) {
         super(conf);
+    }
+
+    @Override
+    public ID nextId() {
+        return (ID) ((Long) currentId.incrementAndGet());
     }
 
     @Override
@@ -65,7 +72,7 @@ public class TransactionalSparkGraph<ID extends Long> extends AbstractSparkGraph
     @Override
     public Iterator<Vertex> vertices(Collection<Object> vertexIds) {
         logger.debug("Getting vertices {}", vertexIds.toString());
-        Iterator<SparkVertex> vs = filterElements(vertexIds, getVertexRDD());
+        Iterator<SparkVertex> vs = filterElements(vertexIds, SparkRDD.VERTEX);
         Iterator<Vertex> vv = IteratorUtils.map(
             vs,
             v -> (Vertex) v
@@ -77,7 +84,7 @@ public class TransactionalSparkGraph<ID extends Long> extends AbstractSparkGraph
     public Iterator<Edge> edges(Collection<Object> edgeIds) {
         logger.debug("Getting edges {}", edgeIds.toString());
         return IteratorUtils.map(
-            filterElements(edgeIds, getEdgeRDD()),
+            filterElements(edgeIds, SparkRDD.EDGE),
             e -> (Edge) e
         );
     }
