@@ -1,15 +1,9 @@
 package org.apache.tinkerpop.gremlin.spark.structure;
 
 import org.apache.commons.configuration.Configuration;
-import org.apache.commons.lang.reflect.ConstructorUtils;
 import org.apache.spark.SparkConf;
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
-import org.apache.tinkerpop.gremlin.process.traversal.TraversalStrategies;
-import org.apache.tinkerpop.gremlin.spark.process.computer.SparkGraphComputer;
-import org.apache.tinkerpop.gremlin.spark.process.computer.traversal.strategy.optimization.SparkInterceptorStrategy;
-import org.apache.tinkerpop.gremlin.spark.process.computer.traversal.strategy.optimization.SparkSingleIterationStrategy;
 import org.apache.tinkerpop.gremlin.structure.Edge;
-import org.apache.tinkerpop.gremlin.structure.Graph;
 import org.apache.tinkerpop.gremlin.structure.Transaction;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
@@ -24,17 +18,6 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class DistributedSparkGraph<ID extends Long> extends AbstractSparkGraph<ID> {
     private final AtomicLong currentId = new AtomicLong(-1L);
-    static {
-        TraversalStrategies.GlobalCache.registerStrategies(
-            DistributedSparkGraph.class, TraversalStrategies.GlobalCache.getStrategies(Graph.class).clone()
-                .addStrategies(
-                    SparkSingleIterationStrategy.instance(),
-                    SparkInterceptorStrategy.instance()
-            )
-        );
-    }
-
-    private Class<? extends GraphComputer> graphComputerClass = SparkGraphComputer.class;
 
     public DistributedSparkGraph(SparkConf conf) {
         super(conf);
@@ -56,17 +39,19 @@ public class DistributedSparkGraph<ID extends Long> extends AbstractSparkGraph<I
 
     @Override
     public <C extends GraphComputer> C compute(Class<C> graphComputerClass) throws IllegalArgumentException {
-        this.graphComputerClass = graphComputerClass;
-        return (C) compute();
+        try {
+            return graphComputerClass.newInstance();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override
     public GraphComputer compute() throws IllegalArgumentException {
-        try {
-            return (GraphComputer) ConstructorUtils.invokeConstructor(graphComputerClass, this);
-        } catch (Exception e) {
-            throw new IllegalArgumentException();
-        }
+        return null;
     }
 
     @Override

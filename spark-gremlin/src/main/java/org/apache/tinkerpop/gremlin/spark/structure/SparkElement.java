@@ -1,6 +1,5 @@
 package org.apache.tinkerpop.gremlin.spark.structure;
 
-import org.apache.tinkerpop.gremlin.spark.GraphDriver;
 import org.apache.tinkerpop.gremlin.structure.Element;
 
 import java.io.Serializable;
@@ -21,12 +20,6 @@ public abstract class SparkElement<ID> extends AbstractSparkEntity<ID> implement
     protected SparkElement(final ID id, final String label) {
         super(id, null);
         this.label = label;
-    }
-
-    @Override
-    public AbstractSparkGraph graph() {
-        if(getGraphUUID()==null) throw new IllegalArgumentException();
-        return (AbstractSparkGraph) GraphDriver.INSTANCE.graph(getGraphUUID());
     }
 
     @Override

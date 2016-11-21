@@ -2,12 +2,12 @@ package org.apache.tinkerpop.gremlin.spark.structure;
 
 import com.clearspring.analytics.util.Lists;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
 import org.apache.tinkerpop.gremlin.structure.*;
 import org.apache.tinkerpop.gremlin.structure.util.ElementHelper;
 import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
@@ -19,7 +19,6 @@ import java.util.stream.Stream;
  * Created by dkopel on 11/15/16.
  */
 public class SparkVertex<ID extends Long> extends SparkElement<ID> implements Vertex {
-    transient private final Logger logger = LoggerFactory.getLogger(getClass());
     protected Map<String, List<Long>> properties = new ConcurrentHashMap<>();
     protected Map<String, Set<Long>> outEdges = new ConcurrentHashMap<>();
     protected Map<String, Set<Long>> inEdges = new ConcurrentHashMap<>();
@@ -39,13 +38,25 @@ public class SparkVertex<ID extends Long> extends SparkElement<ID> implements Ve
 
     @Override
     public <V> Iterator<VertexProperty<V>> properties(String... propertyKeys) {
-        Long[] ids = Stream.of(propertyKeys)
-            .filter(p -> properties.containsKey(p))
-            .flatMapToLong(p -> properties.get(p).stream().mapToLong(Long::longValue))
-            .boxed()
-            .toArray(Long[]::new);
-        logger.debug("Found {} ids", ids.length);
-        return graph().getRDD(ids);
+        Long[] ids;
+        if(propertyKeys != null && propertyKeys.length > 0) {
+             ids = Stream.of(propertyKeys)
+                .filter(p -> properties.containsKey(p))
+                .flatMapToLong(p -> properties.get(p).stream().mapToLong(Long::longValue))
+                .boxed()
+                .toArray(Long[]::new);
+        } else {
+            ids = properties.values().stream()
+                .flatMapToLong(v -> v.stream().mapToLong(Long::longValue))
+                .boxed()
+                .toArray(Long[]::new);
+        }
+
+        if(ids != null && ids.length > 0) {
+            LoggerFactory.getLogger(getClass()).debug("Found {} ids", ids.length);
+            return graph().getRDD(ids);
+        }
+        return Iterators.emptyIterator();
     }
 
     @Override
@@ -172,5 +183,10 @@ public class SparkVertex<ID extends Long> extends SparkElement<ID> implements Ve
         result = 31 * result + (outEdges != null ? outEdges.hashCode() : 0);
         result = 31 * result + (inEdges != null ? inEdges.hashCode() : 0);
         return result;
+    }
+
+    @Override
+    public Set<String> keys() {
+        return properties.keySet();
     }
 }

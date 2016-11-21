@@ -2,6 +2,7 @@ package org.apache.tinkerpop.gremlin.spark.structure;
 
 import org.apache.tinkerpop.gremlin.structure.Element;
 import org.apache.tinkerpop.gremlin.structure.Property;
+import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
 
 import java.util.NoSuchElementException;
 import java.util.UUID;
@@ -57,5 +58,9 @@ public class SparkProperty<ID, V> extends AbstractSparkEntity<ID> implements Pro
     @Override
     public void remove() {
 
+    }
+
+    public String toString() {
+        return StringFactory.propertyString(this);
     }
 }

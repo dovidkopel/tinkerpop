@@ -1,5 +1,6 @@
 package org.apache.tinkerpop.gremlin.spark.structure;
 
+import com.google.common.collect.Lists;
 import org.apache.tinkerpop.gremlin.structure.Property;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.VertexProperty;
@@ -13,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Created by dkopel on 11/16/16.
  */
 public class SparkVertexProperty<ID, V> extends SparkProperty<ID, V> implements VertexProperty<V> {
-    protected Map<String, Property> properties = new ConcurrentHashMap<>();
+    protected Map<String, Long> properties = new ConcurrentHashMap<>();
     private final SparkVertex vertex;
     private final V value;
 
@@ -32,7 +33,7 @@ public class SparkVertexProperty<ID, V> extends SparkProperty<ID, V> implements 
 
     @Override
     public boolean isPresent() {
-        return false;
+        return value != null;
     }
 
     @Override
@@ -42,8 +43,11 @@ public class SparkVertexProperty<ID, V> extends SparkProperty<ID, V> implements 
 
     @Override
     public <V> Property<V> property(String key, V value) {
-
-        return null;
+        Long id = graph().nextId();
+        SparkProperty p = new SparkProperty(id, key, vertex, value, graphUUID);
+        properties.put(key, id);
+        graph().addToRDD(Lists.newArrayList(this, p));
+        return p;
     }
 
     @Override

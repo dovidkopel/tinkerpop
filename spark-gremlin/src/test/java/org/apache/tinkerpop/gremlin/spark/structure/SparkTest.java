@@ -29,6 +29,7 @@ import org.apache.tinkerpop.gremlin.hadoop.structure.HadoopGraph;
 import org.apache.tinkerpop.gremlin.hadoop.structure.io.gryo.GryoInputFormat;
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
 import org.apache.tinkerpop.gremlin.process.computer.ranking.pagerank.PageRankVertexProgram;
+import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.spark.AbstractSparkTest;
 import org.apache.tinkerpop.gremlin.spark.process.computer.SparkGraphComputer;
@@ -163,18 +164,20 @@ public class SparkTest extends AbstractSparkTest {
         System.out.println(tt.next());
 
         logger.debug("Edges: "+graph.traversal().E().count().next());
-        logger.debug("Vertexes: "+graph.traversal().V().toList());
+        logger.debug("Vertices Traversal count: "+graph.traversal().V().toList());
+        logger.debug("Vertices: {}", IteratorUtils.list(graph.vertices()).size());
 
         v3.property("test", 34);
         Iterator<SparkProperty> ps = v3.properties("test");
         while(ps.hasNext()) {
             SparkProperty p = ps.next();
-            logger.debug("Property {}: {}", p.key(), p.value());
+            logger.debug("Property {}", p.toString());
             if (p instanceof VertexProperty) {
                 VertexProperty vp = (VertexProperty) p;
                 Assert.assertEquals(34, vp.value());
             }
         }
+        v1.property("test", 99);
         v3.property("test", 99);
         ps = v3.properties("test");
         List<Object> vs = IteratorUtils.list(ps)
@@ -184,6 +187,12 @@ public class SparkTest extends AbstractSparkTest {
 
         Assert.assertTrue(vs.contains(34));
         Assert.assertTrue(vs.contains(99));
+
+        Assert.assertEquals(2, IteratorUtils.list(v3.properties()).size());
+
+        Assert.assertEquals(2L, (Object) graph.traversal().V().has("test").count().next());
+        Assert.assertEquals(1L, (Object) graph.traversal().V().has("test", 34).count().next());
+        Assert.assertEquals(2L, (Object) graph.traversal().V().has("test", P.gt(30)).count().next());
     }
 
 }

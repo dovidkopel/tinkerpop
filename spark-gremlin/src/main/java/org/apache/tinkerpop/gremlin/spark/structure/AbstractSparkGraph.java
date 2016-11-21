@@ -56,12 +56,18 @@ public abstract class AbstractSparkGraph<ID extends Long> implements SparkGraph<
     }
 
     protected <T extends SparkElement> Iterator<T> filterElements(Collection<Object> elementIds, JavaPairRDD<ID, T> rdd) {
-        Set<ID> ids = elementIds.stream().map(id -> toId(id)).collect(Collectors.toSet());
-        logger.debug("Filtering elements ids: {}", ids);
-        return rdd
-            .filter((t) -> Sets.newHashSet(ids).contains(t._1()))
-            .map(t -> t._2())
-            .toLocalIterator();
+        if(elementIds != null && elementIds.size() > 0) {
+            Set<ID> ids = elementIds.stream().map(id -> toId(id)).collect(Collectors.toSet());
+            logger.debug("Filtering elements ids: {}", ids);
+            return rdd
+                .filter((t) -> Sets.newHashSet(ids).contains(t._1()))
+                .map(t -> t._2())
+                .toLocalIterator();
+        } else {
+            return rdd
+                .map(t -> t._2())
+                .toLocalIterator();
+        }
     }
 
     protected Tuple2<ID, String> prepareElement(Class<? extends Element> clazz, Object... keyValues) {

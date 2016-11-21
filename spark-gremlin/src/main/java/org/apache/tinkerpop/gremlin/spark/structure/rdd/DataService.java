@@ -83,12 +83,12 @@ public class DataService<ID extends Long> {
 
     public <T extends AbstractSparkEntity<ID>> JavaPairRDD<ID, T> addElement(Class<?> ec, Collection<? extends AbstractSparkEntity<ID>> elements) {
         SparkRDD rddType = SparkRDD.findByClass(ec);
-        JavaPairRDD[] vr = new JavaPairRDD[] { getRDD(rddType) };
+        JavaPairRDD<ID, T>[] vr = new JavaPairRDD[] { getRDD(rddType) };
         elements
             .stream()
             .forEach(v -> {
                 rddMap.put(v.id(), rddType);
-                vr[0] = vr[0].filter(ov -> !ov.equals(v)).union(manager.parallelizePairs(Lists.newArrayList(new Tuple2(v.id(), v))));
+                vr[0] = vr[0].filter((Tuple2<ID, T> ov) -> !ov._1().equals(v.id())).union(manager.parallelizePairs(Lists.newArrayList(new Tuple2(v.id(), v))));
             });
         manager.setPairRDD(rddTypes.get(rddType), vr[0]);
         return vr[0];

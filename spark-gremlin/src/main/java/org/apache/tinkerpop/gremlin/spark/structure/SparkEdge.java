@@ -6,14 +6,16 @@ import org.apache.tinkerpop.gremlin.structure.Property;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Created by dkopel on 11/15/16.
  */
 public class SparkEdge<ID extends Long> extends SparkElement<ID> implements Edge {
-    protected Map<String, Property> properties;
+    protected Map<String, Long> properties;
     protected final Long _inVertex;
     protected final Long _outVertex;
 
@@ -25,7 +27,14 @@ public class SparkEdge<ID extends Long> extends SparkElement<ID> implements Edge
 
     @Override
     public <V> Property<V> property(String key, V value) {
-        return null;
+        if (this.removed) throw elementAlreadyRemoved(Vertex.class, id());
+
+        final Long idValue = graph().nextId();
+        final SparkProperty<Long, V> property = new SparkProperty(idValue, key, this, value, this.getGraphUUID());
+
+        this.properties.put(key, id());
+        graph().addToRDD(Arrays.asList(property, this));
+        return property;
     }
 
     @Override
@@ -35,7 +44,10 @@ public class SparkEdge<ID extends Long> extends SparkElement<ID> implements Edge
 
     @Override
     public <V> Iterator<Property<V>> properties(String... propertyKeys) {
-        return null;
+        Long[] ids = Stream.of(propertyKeys)
+            .filter(p -> properties.containsKey(p))
+            .toArray(Long[]::new);
+        return graph().getRDD(ids);
     }
 
     @Override
