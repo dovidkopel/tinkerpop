@@ -9,14 +9,15 @@ import java.util.UUID;
 /**
  * Created by dkopel on 11/16/16.
  */
-public class SparkProperty<ID, V> implements Property<V> {
+public class SparkProperty<ID, V> extends AbstractSparkEntity<ID> implements Property<V> {
     protected final ID id;
-    protected final Element element;
+    protected final SparkElement element;
     protected final String key;
     protected V value;
     protected final UUID graphUUID;
 
-    protected SparkProperty(ID id, String key, Element element, V value, UUID graphUUID) {
+    protected SparkProperty(ID id, String key, SparkElement element, V value, UUID graphUUID) {
+        super(id, graphUUID);
         this.id = id;
         this.element = element;
         this.key = key;
@@ -25,6 +26,7 @@ public class SparkProperty<ID, V> implements Property<V> {
     }
 
     protected SparkProperty(ID id, String key, V value) {
+        super(id, null);
         this.id = id;
         this.key = key;
         this.value = value;

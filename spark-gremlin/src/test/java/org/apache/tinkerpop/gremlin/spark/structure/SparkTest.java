@@ -35,11 +35,9 @@ import org.apache.tinkerpop.gremlin.spark.process.computer.SparkGraphComputer;
 import org.apache.tinkerpop.gremlin.spark.process.computer.SparkHadoopGraphProvider;
 import org.apache.tinkerpop.gremlin.spark.structure.io.PersistedOutputRDD;
 import org.apache.tinkerpop.gremlin.spark.structure.io.gryo.GryoSerializer;
-import org.apache.tinkerpop.gremlin.structure.Direction;
-import org.apache.tinkerpop.gremlin.structure.Graph;
-import org.apache.tinkerpop.gremlin.structure.T;
-import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.apache.tinkerpop.gremlin.structure.*;
 import org.apache.tinkerpop.gremlin.structure.util.GraphFactory;
+import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -48,6 +46,8 @@ import scala.collection.JavaConversions;
 
 import java.io.File;
 import java.util.Iterator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
@@ -164,6 +164,26 @@ public class SparkTest extends AbstractSparkTest {
 
         logger.debug("Edges: "+graph.traversal().E().count().next());
         logger.debug("Vertexes: "+graph.traversal().V().toList());
+
+        v3.property("test", 34);
+        Iterator<SparkProperty> ps = v3.properties("test");
+        while(ps.hasNext()) {
+            SparkProperty p = ps.next();
+            logger.debug("Property {}: {}", p.key(), p.value());
+            if (p instanceof VertexProperty) {
+                VertexProperty vp = (VertexProperty) p;
+                Assert.assertEquals(34, vp.value());
+            }
+        }
+        v3.property("test", 99);
+        ps = v3.properties("test");
+        List<Object> vs = IteratorUtils.list(ps)
+            .stream()
+            .map(p -> p.value())
+            .collect(Collectors.toList());
+
+        Assert.assertTrue(vs.contains(34));
+        Assert.assertTrue(vs.contains(99));
     }
 
 }

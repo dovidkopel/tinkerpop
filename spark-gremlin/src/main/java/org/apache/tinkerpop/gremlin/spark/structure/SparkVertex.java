@@ -4,18 +4,23 @@ import com.clearspring.analytics.util.Lists;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import org.apache.tinkerpop.gremlin.structure.*;
+import org.apache.tinkerpop.gremlin.structure.util.ElementHelper;
 import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by dkopel on 11/15/16.
  */
 public class SparkVertex<ID extends Long> extends SparkElement<ID> implements Vertex {
-    protected Map<String, Long> properties = new ConcurrentHashMap<>();
+    transient private final Logger logger = LoggerFactory.getLogger(getClass());
+    protected Map<String, List<Long>> properties = new ConcurrentHashMap<>();
     protected Map<String, Set<Long>> outEdges = new ConcurrentHashMap<>();
     protected Map<String, Set<Long>> inEdges = new ConcurrentHashMap<>();
 
@@ -34,7 +39,13 @@ public class SparkVertex<ID extends Long> extends SparkElement<ID> implements Ve
 
     @Override
     public <V> Iterator<VertexProperty<V>> properties(String... propertyKeys) {
-        return null;
+        Long[] ids = Stream.of(propertyKeys)
+            .filter(p -> properties.containsKey(p))
+            .flatMapToLong(p -> properties.get(p).stream().mapToLong(Long::longValue))
+            .boxed()
+            .toArray(Long[]::new);
+        logger.debug("Found {} ids", ids.length);
+        return graph().getRDD(ids);
     }
 
     @Override
@@ -58,7 +69,35 @@ public class SparkVertex<ID extends Long> extends SparkElement<ID> implements Ve
 
     @Override
     public <V> VertexProperty<V> property(VertexProperty.Cardinality cardinality, String key, V value, Object... keyValues) {
-        return null;
+        if (this.removed) throw elementAlreadyRemoved(Vertex.class, id());
+        ElementHelper.legalPropertyKeyValueArray(keyValues);
+        ElementHelper.validateProperty(key, value);
+        final Optional<Object> optionalId = ElementHelper.getIdValue(keyValues);
+        final Optional<VertexProperty<V>> optionalVertexProperty = ElementHelper.stageVertexProperty(this, cardinality, key, value, keyValues);
+        if (optionalVertexProperty.isPresent()) return optionalVertexProperty.get();
+
+        final Long idValue = optionalId.isPresent() ? graph().toId(optionalId.get()) : graph().nextId();
+        final SparkVertexProperty<Long, V> vertexProperty = new SparkVertexProperty(idValue, key, this, value, keyValues);
+
+        final List<Long> list = this.properties.getOrDefault(key, new ArrayList<>());
+        list.add(idValue);
+        this.properties.put(key, list);
+        graph().addToRDD(Arrays.asList(vertexProperty, this));
+        return vertexProperty;
+    }
+
+    @Override
+    public <V> VertexProperty<V> property(String key, V value) {
+        if (this.removed) throw elementAlreadyRemoved(Vertex.class, id());
+
+        final Long idValue = graph().nextId();
+        final SparkVertexProperty<Long, V> vertexProperty = new SparkVertexProperty(idValue, key, this, value);
+
+        final List<Long> list = this.properties.getOrDefault(key, new ArrayList<>());
+        list.add(idValue);
+        this.properties.put(key, list);
+        graph().addToRDD(Arrays.asList(vertexProperty, this));
+        return vertexProperty;
     }
 
     private Map<String, Set<Long>> _edges(Direction direction) {

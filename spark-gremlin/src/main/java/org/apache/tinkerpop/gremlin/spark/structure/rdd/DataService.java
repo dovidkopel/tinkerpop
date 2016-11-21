@@ -2,10 +2,7 @@ package org.apache.tinkerpop.gremlin.spark.structure.rdd;
 
 import com.google.common.collect.Lists;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.tinkerpop.gremlin.spark.structure.SparkEdge;
-import org.apache.tinkerpop.gremlin.spark.structure.SparkElement;
-import org.apache.tinkerpop.gremlin.spark.structure.SparkRDD;
-import org.apache.tinkerpop.gremlin.spark.structure.SparkVertex;
+import org.apache.tinkerpop.gremlin.spark.structure.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
@@ -30,6 +27,7 @@ public class DataService<ID extends Long> {
         this.manager = manager;
         rddTypes.put(SparkRDD.VERTEX, manager.newPairRDD(clazz, SparkVertex.class, "vertex")._1());
         rddTypes.put(SparkRDD.EDGE, manager.newPairRDD(clazz, SparkEdge.class, "edge")._1());
+        rddTypes.put(SparkRDD.PROPERTY, manager.newPairRDD(clazz, SparkProperty.class, "property")._1());
     }
 
     public JavaPairRDD<ID, SparkVertex> getVertexRDD() {
@@ -40,17 +38,23 @@ public class DataService<ID extends Long> {
         return manager.getPairRDD(rddTypes.get(SparkRDD.EDGE));
     }
 
-    private <K extends ID, T extends SparkElement> JavaPairRDD<K, T> getRDD(K id) {
+    public JavaPairRDD<ID, SparkProperty> getPropertyRDD() {
+        return manager.getPairRDD(rddTypes.get(SparkRDD.PROPERTY));
+    }
+
+    private <K extends ID, T extends AbstractSparkEntity> JavaPairRDD<K, T> getRDD(K id) {
         switch(rddMap.get(id)) {
             case VERTEX:
                 return manager.getPairRDD(rddTypes.get(SparkRDD.VERTEX));
             case EDGE:
                 return manager.getPairRDD(rddTypes.get(SparkRDD.EDGE));
+            case PROPERTY:
+                return manager.getPairRDD(rddTypes.get(SparkRDD.PROPERTY));
         }
         return null;
     }
 
-    public Iterator<? extends SparkElement> getRDD(Collection<ID> ids) {
+    public Iterator<? extends AbstractSparkEntity> getRDD(Collection<ID> ids) {
         return ids.stream()
             .filter(id -> rddMap.containsKey(id))
             .map(id -> getRDD(id).lookup(id).get(0))
@@ -73,11 +77,11 @@ public class DataService<ID extends Long> {
         return manager.getPairRDD(rddTypes.get(rddType));
     }
 
-    public <T extends SparkElement<ID>> JavaPairRDD<ID, T> addElement(Class<?> ec, SparkElement<ID>... elements) {
+    public <T extends AbstractSparkEntity<ID>> JavaPairRDD<ID, T> addElement(Class<?> ec, AbstractSparkEntity<ID>... elements) {
         return addElement(ec, Lists.newArrayList(elements));
     }
 
-    public <T extends SparkElement<ID>> JavaPairRDD<ID, T> addElement(Class<?> ec, Collection<? extends SparkElement<ID>> elements) {
+    public <T extends AbstractSparkEntity<ID>> JavaPairRDD<ID, T> addElement(Class<?> ec, Collection<? extends AbstractSparkEntity<ID>> elements) {
         SparkRDD rddType = SparkRDD.findByClass(ec);
         JavaPairRDD[] vr = new JavaPairRDD[] { getRDD(rddType) };
         elements
@@ -104,5 +108,13 @@ public class DataService<ID extends Long> {
 
     public JavaPairRDD<ID, SparkEdge<ID>> addEdges(SparkEdge<ID>... edges) {
         return addEdges(Lists.newArrayList(edges));
+    }
+
+    public JavaPairRDD<ID, SparkProperty<ID, ?>> addProperties(Collection<SparkProperty<ID, ?>> properties) {
+        return addElement(SparkProperty.class, properties);
+    }
+
+    public JavaPairRDD<ID, SparkProperty<ID, ?>> addProperties(SparkProperty<ID, ?>... properties) {
+        return addProperties(Lists.newArrayList(properties));
     }
 }

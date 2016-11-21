@@ -9,33 +9,24 @@ import java.util.UUID;
 /**
  * Created by dkopel on 11/15/16.
  */
-public abstract class SparkElement<ID> implements Element, Serializable {
-    protected final ID id;
+public abstract class SparkElement<ID> extends AbstractSparkEntity<ID> implements Element, Serializable {
     protected final String label;
-    protected final UUID graphUUID;
     protected boolean removed = false;
 
     protected SparkElement(final ID id, final String label, UUID graphUUID) {
-        this.id = id;
+        super(id, graphUUID);
         this.label = label;
-        this.graphUUID = graphUUID;
     }
 
     protected SparkElement(final ID id, final String label) {
-        this.id = id;
+        super(id, null);
         this.label = label;
-        this.graphUUID = null;
     }
 
     @Override
     public AbstractSparkGraph graph() {
-        if(graphUUID==null) throw new IllegalArgumentException();
-        return (AbstractSparkGraph) GraphDriver.INSTANCE.graph(graphUUID);
-    }
-
-    @Override
-    public ID id() {
-        return this.id;
+        if(getGraphUUID()==null) throw new IllegalArgumentException();
+        return (AbstractSparkGraph) GraphDriver.INSTANCE.graph(getGraphUUID());
     }
 
     @Override
@@ -50,9 +41,9 @@ public abstract class SparkElement<ID> implements Element, Serializable {
     @Override
     public String toString() {
         return "SparkElement{" +
-            "id=" + id +
+            "id=" + getId() +
             ", label='" + label + '\'' +
-            ", graphUUID=" + graphUUID +
+            ", graphUUID=" + getGraphUUID() +
             ", removed=" + removed +
             '}';
     }
@@ -65,17 +56,17 @@ public abstract class SparkElement<ID> implements Element, Serializable {
         SparkElement<?> that = (SparkElement<?>) o;
 
         if (removed != that.removed) return false;
-        if (!id.equals(that.id)) return false;
+        if (!getId().equals(that.getId())) return false;
         if (!label.equals(that.label)) return false;
-        return graphUUID.equals(that.graphUUID);
+        return getGraphUUID().equals(that.getGraphUUID());
 
     }
 
     @Override
     public int hashCode() {
-        int result = id.hashCode();
+        int result = getId().hashCode();
         result = 31 * result + label.hashCode();
-        result = 31 * result + graphUUID.hashCode();
+        result = 31 * result + getGraphUUID().hashCode();
         result = 31 * result + (removed ? 1 : 0);
         return result;
     }

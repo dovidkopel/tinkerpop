@@ -102,7 +102,7 @@ public abstract class AbstractSparkGraph<ID extends Long> implements SparkGraph<
         return edge;
     }
 
-    public <T extends SparkElement> void addToRDD(Collection<T> elements) {
+    public <T extends AbstractSparkEntity> void addToRDD(Collection<T> elements) {
         dataService.addVertexes(elements.stream()
             .filter(e -> e instanceof SparkVertex)
             .map(e -> (SparkVertex) e)
@@ -111,6 +111,11 @@ public abstract class AbstractSparkGraph<ID extends Long> implements SparkGraph<
         dataService.addEdges(elements.stream()
             .filter(e -> e instanceof SparkEdge)
             .map(e -> (SparkEdge) e)
+            .collect(Collectors.toList()));
+
+        dataService.addProperties(elements.stream()
+            .filter(e -> e instanceof SparkProperty)
+            .map(e -> (SparkProperty) e)
             .collect(Collectors.toList()));
     }
 

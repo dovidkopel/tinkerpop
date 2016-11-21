@@ -12,22 +12,17 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Created by dkopel on 11/16/16.
  */
-public class SparkVertexProperty<ID, V> extends SparkElement<ID> implements VertexProperty<V> {
+public class SparkVertexProperty<ID, V> extends SparkProperty<ID, V> implements VertexProperty<V> {
     protected Map<String, Property> properties = new ConcurrentHashMap<>();
     private final SparkVertex vertex;
     private final V value;
 
     public SparkVertexProperty(ID id, String label, SparkVertex vertex, V value, Object... propertyKeyValues) {
-        super(id, label, vertex.graphUUID);
+        super(id, label, vertex, value, vertex.getGraphUUID());
         this.vertex = vertex;
         this.value = value;
         ElementHelper.legalPropertyKeyValueArray(propertyKeyValues);
         ElementHelper.attachProperties(this, propertyKeyValues);
-    }
-
-    @Override
-    public String key() {
-        return label;
     }
 
     @Override

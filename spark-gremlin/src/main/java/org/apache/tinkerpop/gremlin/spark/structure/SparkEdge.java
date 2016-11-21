@@ -18,7 +18,7 @@ public class SparkEdge<ID extends Long> extends SparkElement<ID> implements Edge
     protected final Long _outVertex;
 
     protected SparkEdge(final ID id, final SparkVertex outVertex, final String label, final SparkVertex inVertex) {
-        super(id, label, inVertex.graphUUID);
+        super(id, label, inVertex.getGraphUUID());
         this._outVertex = (Long) outVertex.id();
         this._inVertex = (Long) inVertex.id();
     }
