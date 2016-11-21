@@ -193,6 +193,15 @@ public class SparkTest extends AbstractSparkTest {
         Assert.assertEquals(2L, (Object) graph.traversal().V().has("test").count().next());
         Assert.assertEquals(1L, (Object) graph.traversal().V().has("test", 34).count().next());
         Assert.assertEquals(2L, (Object) graph.traversal().V().has("test", P.gt(30)).count().next());
-    }
 
+        logger.debug("Removing edge {}", e1);
+        Assert.assertTrue(graph.edges(e1.id()).hasNext());
+        Assert.assertTrue(v1.edges(Direction.OUT, "loves").hasNext());
+        Assert.assertTrue(v2.edges(Direction.IN, "loves").hasNext());
+        e1.remove();
+        Assert.assertFalse(v1.edges(Direction.OUT, "loves").hasNext());
+        Assert.assertFalse(v2.edges(Direction.IN, "loves").hasNext());
+
+        Assert.assertFalse(graph.edges(e1.id()).hasNext());
+    }
 }

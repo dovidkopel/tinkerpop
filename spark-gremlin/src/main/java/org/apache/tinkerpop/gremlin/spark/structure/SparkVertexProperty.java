@@ -6,7 +6,9 @@ import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.VertexProperty;
 import org.apache.tinkerpop.gremlin.structure.util.ElementHelper;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -52,7 +54,10 @@ public class SparkVertexProperty<ID, V> extends SparkProperty<ID, V> implements 
 
     @Override
     public void remove() {
-
+        List ids = new ArrayList();
+        ids.addAll(properties.values());
+        ids.add(id);
+        graph().removeFromRDD(ids);
     }
 
     @Override

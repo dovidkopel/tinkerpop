@@ -33,6 +33,14 @@ public class SparkVertex<ID extends Long> extends SparkElement<ID> implements Ve
 
     @Override
     public void remove() {
+        if (this.removed) throw elementAlreadyRemoved(Vertex.class, id());
+        this.removed = true;
+        graph().removeFromRDD(Arrays.asList(this));
+        // All edges need to be removed
+            // All vertices that touch those edges need to
+        IteratorUtils.list(edges(Direction.BOTH)).forEach(e -> e.remove());
+        // All properties need to be removed
+        IteratorUtils.list(properties()).forEach(p -> p.remove());
 
     }
 
@@ -75,6 +83,31 @@ public class SparkVertex<ID extends Long> extends SparkElement<ID> implements Ve
             _edges(direction).get(label).add(id);
         } else {
             _edges(direction).put(label, Sets.newHashSet(id));
+        }
+    }
+
+    protected void _removeEdge(Direction direction, String label, ID id) {
+        if(direction.equals(Direction.IN) || direction.equals(Direction.BOTH)) {
+            if(inEdges.containsKey(label)) {
+                Set<Long> ids = inEdges.get(label);
+                ids.remove(id);
+                if(ids.size() > 0) {
+                    inEdges.put(label, ids);
+                } else {
+                    inEdges.remove(label);
+                }
+            }
+        }
+        if(direction.equals(Direction.OUT) || direction.equals(Direction.BOTH)) {
+            if(outEdges.containsKey(label)) {
+                Set<Long> ids = outEdges.get(label);
+                ids.remove(id);
+                if(ids.size() > 0) {
+                    outEdges.put(label, ids);
+                } else {
+                    outEdges.remove(label);
+                }
+            }
         }
     }
 

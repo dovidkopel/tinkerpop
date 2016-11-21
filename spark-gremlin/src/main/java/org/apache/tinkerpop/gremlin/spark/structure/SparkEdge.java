@@ -39,7 +39,14 @@ public class SparkEdge<ID extends Long> extends SparkElement<ID> implements Edge
 
     @Override
     public void remove() {
-
+        if (this.removed) throw elementAlreadyRemoved(Edge.class, id());
+        this.removed = true;
+        SparkVertex iV = (SparkVertex) inVertex();
+        SparkVertex oV = (SparkVertex) outVertex();
+        iV._removeEdge(Direction.IN, label, id());
+        oV._removeEdge(Direction.OUT, label, id());
+        graph().removeFromRDD(Arrays.asList(this));
+        graph().addToRDD(Arrays.asList(iV, oV));
     }
 
     @Override

@@ -77,11 +77,11 @@ public class DataService<ID extends Long> {
         return manager.getPairRDD(rddTypes.get(rddType));
     }
 
-    public <T extends AbstractSparkEntity<ID>> JavaPairRDD<ID, T> addElement(Class<?> ec, AbstractSparkEntity<ID>... elements) {
-        return addElement(ec, Lists.newArrayList(elements));
+    public <T extends AbstractSparkEntity<ID>> JavaPairRDD<ID, T> addElements(Class<?> ec, AbstractSparkEntity<ID>... elements) {
+        return addElements(ec, Lists.newArrayList(elements));
     }
 
-    public <T extends AbstractSparkEntity<ID>> JavaPairRDD<ID, T> addElement(Class<?> ec, Collection<? extends AbstractSparkEntity<ID>> elements) {
+    private <T extends AbstractSparkEntity<ID>> JavaPairRDD<ID, T> addElements(Class<?> ec, Collection<? extends AbstractSparkEntity<ID>> elements) {
         SparkRDD rddType = SparkRDD.findByClass(ec);
         JavaPairRDD<ID, T>[] vr = new JavaPairRDD[] { getRDD(rddType) };
         elements
@@ -94,8 +94,33 @@ public class DataService<ID extends Long> {
         return vr[0];
     }
 
+    private <T extends AbstractSparkEntity<ID>> JavaPairRDD<ID, T> removeElements(Class<?> ec, Collection<? extends AbstractSparkEntity<ID>> elements) {
+        SparkRDD rddType = SparkRDD.findByClass(ec);
+        JavaPairRDD<ID, T>[] vr = new JavaPairRDD[] { getRDD(rddType) };
+        elements
+            .stream()
+            .forEach(v -> {
+                rddMap.remove(v.id());
+                vr[0] = vr[0].filter((Tuple2<ID, T> ov) -> !ov._1().equals(v.id()));
+            });
+        manager.setPairRDD(rddTypes.get(rddType), vr[0]);
+        return vr[0];
+    }
+
+    public JavaPairRDD<ID, SparkVertex<ID>> removeVertexes(Collection<SparkVertex<ID>> vertexes) {
+        return removeElements(SparkVertex.class, vertexes);
+    }
+
+    public JavaPairRDD<ID, SparkEdge<ID>> removeEdges(Collection<SparkEdge<ID>> edges) {
+        return removeElements(SparkEdge.class, edges);
+    }
+
+    public JavaPairRDD<ID, SparkProperty<ID, ?>> removeProperties(Collection<SparkProperty<ID, ?>> properties) {
+        return removeElements(SparkProperty.class, properties);
+    }
+
     public JavaPairRDD<ID, SparkVertex<ID>> addVertexes(Collection<SparkVertex<ID>> vertexes) {
-        return addElement(SparkVertex.class, vertexes);
+        return addElements(SparkVertex.class, vertexes);
     }
 
     public JavaPairRDD<ID, SparkVertex<ID>> addVertexes(SparkVertex<ID>... vertexes) {
@@ -103,7 +128,7 @@ public class DataService<ID extends Long> {
     }
 
     public JavaPairRDD<ID, SparkEdge<ID>> addEdges(Collection<SparkEdge<ID>> edges) {
-        return addElement(SparkEdge.class, edges);
+        return addElements(SparkEdge.class, edges);
     }
 
     public JavaPairRDD<ID, SparkEdge<ID>> addEdges(SparkEdge<ID>... edges) {
@@ -111,7 +136,7 @@ public class DataService<ID extends Long> {
     }
 
     public JavaPairRDD<ID, SparkProperty<ID, ?>> addProperties(Collection<SparkProperty<ID, ?>> properties) {
-        return addElement(SparkProperty.class, properties);
+        return addElements(SparkProperty.class, properties);
     }
 
     public JavaPairRDD<ID, SparkProperty<ID, ?>> addProperties(SparkProperty<ID, ?>... properties) {
